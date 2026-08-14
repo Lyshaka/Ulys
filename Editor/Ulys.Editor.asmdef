@@ -1,6 +1,16 @@
 {
     "name": "Ulys.Editor",
-	"excludePlatforms": [
-		"Editor"
-	]
+    "rootNamespace": "Ulys.Editor",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "Editor"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

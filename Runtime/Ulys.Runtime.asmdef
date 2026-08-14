@@ -1,3 +1,14 @@
 {
-    "name": "Ulys.Runtime"
+    "name": "Ulys.Runtime",
+    "rootNamespace": "Ulys.Runtime",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
