@@ -1,0 +1,10 @@
+{
+    "name": "com.lyshaka.ulys",
+    "version": "0.1.0",
+    "displayName": "Ulys",
+    "description": "A collection of reusable C# and Unity utilities.",
+    "unity": "6000.3",
+    "author": {
+        "name": "Lyshaka"
+    }
+}

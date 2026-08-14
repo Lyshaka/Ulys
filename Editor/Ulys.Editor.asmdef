@@ -1,0 +1,6 @@
+{
+    "name": "Ulys.Editor",
+	"excludePlatforms": [
+		"Editor"
+	]
+}
