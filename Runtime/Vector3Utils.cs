@@ -7,6 +7,9 @@ using UnityEngine;
 
 public static class Vector3Utils
 {
+	
+	#region GET_CLOSEST
+	
 	/// <summary>
 	/// Get the index of <paramref name="listPos"/> whose position is the closest to <paramref name="pos"/>.
 	/// </summary>
@@ -129,6 +132,25 @@ public static class Vector3Utils
 
 		return true;
 	}
+	
+	#endregion
+		
+	#region RANDOM
+
+	/// <summary>
+	/// Returns a random Vector3 whose components X, Y and Z are set to random numbers
+	/// between <paramref name="minInclusive"/> and <paramref name="maxInclusive"/> component-wise.
+	/// </summary>
+	public static Vector3 Random(Vector3 minInclusive, Vector3 maxInclusive)
+	{
+		return new Vector3(
+			UnityEngine.Random.Range(minInclusive.x, maxInclusive.x),
+			UnityEngine.Random.Range(minInclusive.y, maxInclusive.y),
+			UnityEngine.Random.Range(minInclusive.z, maxInclusive.z)
+		);
+	}
+		
+	#endregion
 }
 
 }
