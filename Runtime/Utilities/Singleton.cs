@@ -7,11 +7,11 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 {
 	public static T Instance { get; private set; }
 
-	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-	private static void ResetInstance()
-	{
-		Instance = null;
-	}
+	// [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+	// private static void ResetInstance()
+	// {
+	// 	Instance = null;
+	// }
 
 	protected virtual void Awake()
 	{

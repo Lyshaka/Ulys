@@ -1,0 +1,19 @@
+{
+    "name": "Ulys.Tests",
+    "rootNamespace": "Ulys.Tests",
+    "references": [
+        "GUID:23f4d9fae4e69a24c990fb2f781bb49c",
+        "GUID:f0f0784b5b4ada84ab057f57f858147b"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "Editor"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
