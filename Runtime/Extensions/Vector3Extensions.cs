@@ -28,6 +28,30 @@ public static class Vector3Extensions
 	{
 		return new Vector3(v.x, v.y, z);
 	}
+	
+	/// <summary>
+	/// Returns the same Vector3 with its X component changed to <paramref name="x"/>, and its Y component changed to <paramref name="y"/>.
+	/// </summary>
+	public static Vector3 WithXY(this Vector3 v, float x, float y)
+	{
+		return new Vector3(x, y, v.z);
+	}
+	
+	/// <summary>
+	/// Returns the same Vector3 with its X component changed to <paramref name="x"/>, and its Z component changed to <paramref name="z"/>.
+	/// </summary>
+	public static Vector3 WithXZ(this Vector3 v, float x, float z)
+	{
+		return new Vector3(x, v.y, z);
+	}
+	
+	/// <summary>
+	/// Returns the same Vector3 with its Y component changed to <paramref name="y"/>, and its Z component changed to <paramref name="z"/>.
+	/// </summary>
+	public static Vector3 WithYZ(this Vector3 v, float y, float z)
+	{
+		return new Vector3(v.x, y, z);
+	}
 
 	/// <summary>
 	/// Clamp each component of this Vector3 between <paramref name="min"/> and <paramref name="max"/> component-wise.
