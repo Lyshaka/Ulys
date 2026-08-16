@@ -22,29 +22,18 @@ public static class Vector3Utils
 	{
 		index = -1;
 
-		if (listPos == null)
+		if (listPos == null || listPos.Count == 0)
 			return false;
 		
-		int count = listPos.Count;
+		float closestSqrDistance = float.MaxValue;
 
-		if (count == 0)
-			return false;
-
-		if (count == 1)
-		{
-			index = 1;
-			return true;
-		}
-		
-		float maxSqrDistance = float.MaxValue;
-
-		for (int i = 0; i < count; i++)
+		for (int i = 0; i < listPos.Count; i++)
 		{
 			float sqrDistance = (pos - listPos[i]).sqrMagnitude;
-			if (sqrDistance < maxSqrDistance)
+			if (sqrDistance < closestSqrDistance)
 			{
 				index = i;
-				maxSqrDistance = sqrDistance;
+				closestSqrDistance = sqrDistance;
 			}
 		}
 
@@ -63,29 +52,18 @@ public static class Vector3Utils
 	{
 		index = -1;
 
-		if (arrayPos == null)
+		if (arrayPos == null || arrayPos.Length == 0)
 			return false;
 		
-		int length = arrayPos.Length;
+		float closestSqrDistance = float.MaxValue;
 
-		if (length == 0)
-			return false;
-
-		if (length == 1)
-		{
-			index = 1;
-			return true;
-		}
-		
-		float maxSqrDistance = float.MaxValue;
-
-		for (int i = 0; i < length; i++)
+		for (int i = 0; i < arrayPos.Length; i++)
 		{
 			float sqrDistance = (pos - arrayPos[i]).sqrMagnitude;
-			if (sqrDistance < maxSqrDistance)
+			if (sqrDistance < closestSqrDistance)
 			{
 				index = i;
-				maxSqrDistance = sqrDistance;
+				closestSqrDistance = sqrDistance;
 			}
 		}
 
@@ -104,29 +82,18 @@ public static class Vector3Utils
 	{
 		index = -1;
 
-		if (!arrayPos.IsCreated)
-			return false;
-		
-		int length = arrayPos.Length;
-
-		if (length == 0)
+		if (!arrayPos.IsCreated || arrayPos.Length == 0)
 			return false;
 
-		if (length == 1)
-		{
-			index = 1;
-			return true;
-		}
-		
-		float maxSqrDistance = float.MaxValue;
+		float closestSqrDistance = float.MaxValue;
 
-		for (int i = 0; i < length; i++)
+		for (int i = 0; i < arrayPos.Length; i++)
 		{
 			float sqrDistance = (pos - arrayPos[i]).sqrMagnitude;
-			if (sqrDistance < maxSqrDistance)
+			if (sqrDistance < closestSqrDistance)
 			{
 				index = i;
-				maxSqrDistance = sqrDistance;
+				closestSqrDistance = sqrDistance;
 			}
 		}
 
