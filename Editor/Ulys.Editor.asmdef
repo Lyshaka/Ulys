@@ -1,11 +1,13 @@
 {
     "name": "Ulys.Editor",
     "rootNamespace": "Ulys.Editor",
-    "references": [],
-    "includePlatforms": [],
-    "excludePlatforms": [
+    "references": [
+        "GUID:f0f0784b5b4ada84ab057f57f858147b"
+    ],
+    "includePlatforms": [
         "Editor"
     ],
+    "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
