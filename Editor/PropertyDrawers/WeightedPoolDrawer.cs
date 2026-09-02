@@ -1,4 +1,5 @@
-﻿using Ulys.Runtime.Utilities;
+﻿using System;
+using Ulys.Runtime.Utilities;
 
 namespace Ulys.Editor.PropertyDrawers
 {
@@ -12,12 +13,17 @@ public class WeightedPoolDrawer : PropertyDrawer
 {
 	private const int MinimumWeight = 1;
 	private const int DefaultWeight = 1;
+	
+	private const float WeightWidth = 60f;
+	private const float PercentageWidth = 70f;
 
 	private const float Spacing = 5f;
 	private const float ColumnSpacing = 8f;
 	private const float ChanceBarHeight = 18f;
 	private const float HandleWidth = 18f;
 	private const float ElementVerticalPadding = 4f;
+	private const float ComplexHeaderHeight = 18f;
+	private const float ComplexFieldSpacing = 2f;
 
 	private ReorderableList _list;
 
@@ -46,7 +52,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			label,
 			true);
 
-		EditorGUI.EndProperty(); // TODO
+		EditorGUI.EndProperty();
 
 		if (!property.isExpanded)
 			return;
@@ -58,15 +64,17 @@ public class WeightedPoolDrawer : PropertyDrawer
 		int totalWeight = GetTotalWeight(pool);
 
 		// Summary
+		float summaryHeight = EditorGUIUtility.singleLineHeight * 3f;
+		
 		Rect summaryRect = new Rect(
 			position.x,
 			y,
 			position.width,
-			EditorGUIUtility.singleLineHeight);
-
+			summaryHeight);
+		
 		DrawSummary(summaryRect, pool.arraySize, totalWeight);
 
-		y += EditorGUIUtility.singleLineHeight + Spacing;
+		y += summaryHeight + Spacing;
 
 		// List
 		ReorderableList list = GetList(pool);
@@ -109,11 +117,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		ReorderableList list = GetList(pool);
 
-		float height = EditorGUIUtility.singleLineHeight +
-					   Spacing +
-					   EditorGUIUtility.singleLineHeight +
-					   Spacing +
-					   list.GetHeight();
+		float height = (EditorGUIUtility.singleLineHeight + Spacing) * 4f + list.GetHeight();
 
 		string warning = GetWarning(pool);
 
@@ -125,38 +129,61 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 	private void DrawSummary(Rect rect, int entryCount, int totalWeight)
 	{
-		GUIStyle style = new GUIStyle(EditorStyles.label)
+		GUIStyle valueStyle = new(EditorStyles.label)
 		{
 			fontStyle = FontStyle.Bold,
 			fontSize = EditorStyles.label.fontSize + 1
 		};
 
-		const float entriesWidth = 100f;
+		const float indent = 12f;
+		float lineHeight = EditorGUIUtility.singleLineHeight;
+
+		Rect lineRect = new Rect(
+			rect.x + indent,
+			rect.y,
+			rect.width - indent,
+			lineHeight);
+
+		// Type
+		Rect valueRect = EditorGUI.PrefixLabel(
+			lineRect,
+			new GUIContent("Type"));
 
 		EditorGUI.LabelField(
-			new Rect(
-				rect.x,
-				rect.y,
-				entriesWidth,
-				rect.height),
-			$"Entries: {entryCount}",
-			style);
+			valueRect,
+			GetPoolTypeName(),
+			valueStyle);
+
+		// Entries
+		lineRect.y += lineHeight;
+
+		valueRect = EditorGUI.PrefixLabel(
+			lineRect,
+			new GUIContent("Entries"));
 
 		EditorGUI.LabelField(
-			new Rect(
-				rect.x + entriesWidth,
-				rect.y,
-				150f,
-				rect.height),
-			$"Total Weight: {totalWeight}",
-			style);
+			valueRect,
+			entryCount.ToString(),
+			valueStyle);
+
+		// Total Weight
+		lineRect.y += lineHeight;
+
+		valueRect = EditorGUI.PrefixLabel(
+			lineRect,
+			new GUIContent("Total Weight"));
+
+		EditorGUI.LabelField(
+			valueRect,
+			totalWeight.ToString(),
+			valueStyle);
 	}
 
 	private ReorderableList GetList(SerializedProperty pool)
 	{
-		if (_list != null
-			&& _list.serializedProperty.serializedObject == pool.serializedObject
-			&& _list.serializedProperty.propertyPath == pool.propertyPath)
+		if (_list != null &&
+			_list.serializedProperty.serializedObject == pool.serializedObject &&
+			_list.serializedProperty.propertyPath == pool.propertyPath)
 			return _list;
 
 		_list = new ReorderableList(
@@ -165,27 +192,31 @@ public class WeightedPoolDrawer : PropertyDrawer
 			true,
 			true,
 			true,
-			true);
-		
-		_list.drawHeaderCallback = DrawHeader;
-
-		_list.drawElementCallback = (rect, index, _, _) => DrawElement(rect, pool, index);
-
-		_list.elementHeightCallback = index =>
+			true)
 		{
-			SerializedProperty entry = pool.GetArrayElementAtIndex(index);
-
-			SerializedProperty item = entry.FindPropertyRelative("item");
-
-			return EditorGUI.GetPropertyHeight(item, true) + ElementVerticalPadding;
-		};
-
-		_list.onAddCallback = _ => AddEntry(pool);
-
-		_list.onRemoveCallback = list =>
-		{
-			if (list.index >= 0 && list.index < pool.arraySize)
+			drawHeaderCallback = DrawHeader,
+			
+			drawElementCallback = (rect, index, _, _) => DrawElement(rect, pool, index),
+			
+			elementHeightCallback = index =>
 			{
+				SerializedProperty entry = pool.GetArrayElementAtIndex(index);
+
+				SerializedProperty item = entry.FindPropertyRelative("item");
+
+				if (IsComplexProperty(item))
+					return GetComplexItemHeight(item);
+
+				return EditorGUI.GetPropertyHeight(item, true) + ElementVerticalPadding;
+			},
+			
+			onAddCallback = _ => AddEntry(pool),
+			
+			onRemoveCallback = list =>
+			{
+				if (list.index < 0 || list.index >= pool.arraySize)
+					return;
+
 				pool.DeleteArrayElementAtIndex(list.index);
 
 				list.index = Mathf.Clamp(list.index, 0, pool.arraySize - 1);
@@ -195,16 +226,9 @@ public class WeightedPoolDrawer : PropertyDrawer
 		return _list;
 	}
 
-	private void DrawHeader(Rect rect)
+	private static void DrawHeader(Rect rect)
 	{
-		const float weightWidth = 60f;
-		const float percentageWidth = 70f;
-
-		float itemWidth =
-			rect.width -
-			weightWidth -
-			percentageWidth -
-			ColumnSpacing * 2f;
+		float itemWidth = rect.width - WeightWidth - PercentageWidth - ColumnSpacing * 2f;
 
 		EditorGUI.LabelField(
 			new Rect(
@@ -218,7 +242,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			new Rect(
 				rect.x + itemWidth + ColumnSpacing,
 				rect.y,
-				weightWidth,
+				WeightWidth,
 				rect.height),
 			"Weight");
 
@@ -227,15 +251,15 @@ public class WeightedPoolDrawer : PropertyDrawer
 				rect.x +
 				itemWidth +
 				ColumnSpacing +
-				weightWidth +
+				WeightWidth +
 				ColumnSpacing,
 				rect.y,
-				percentageWidth,
+				PercentageWidth,
 				rect.height),
 			"Chance");
 	}
 
-	private void DrawElement(Rect rect, SerializedProperty pool, int index)
+	private static void DrawElement(Rect rect, SerializedProperty pool, int index)
 	{
 		SerializedProperty entry = pool.GetArrayElementAtIndex(index);
 
@@ -256,80 +280,42 @@ public class WeightedPoolDrawer : PropertyDrawer
 		// --------------------------------------------------
 		// Item
 		// --------------------------------------------------
-		
-		const float weightWidth = 60f;
-		const float percentageWidth = 70f;
 
-		float itemWidth = rect.width - weightWidth - percentageWidth - ColumnSpacing * 2f;
+		float itemWidth = rect.width - WeightWidth - PercentageWidth - ColumnSpacing * 2f;
 		float itemHeight = EditorGUI.GetPropertyHeight(item, true);
 
-		bool complex = IsComplexProperty(item);
-
-		float itemX = complex
-			? rect.x + HandleWidth
-			: rect.x;
-		
 		float itemY = rect.y + (rect.height - itemHeight) * 0.5f;
 
-		float adjustedItemWidth = complex
-			? itemWidth - HandleWidth
-			: itemWidth;
-
-		EditorGUI.PropertyField(
-			new Rect(
-				itemX,
+		if (IsComplexProperty(item))
+		{
+			DrawComplexItem(
+				rect,
+				item,
+				index,
+				itemWidth,
+				weight,
+				percentage);
+		}
+		else
+		{
+			DrawSimpleItem(
+				rect,
 				itemY,
-				adjustedItemWidth,
-				rect.height - 2f),
-			item,
-			GetItemLabel(item),
-			true);
+				itemWidth,
+				itemHeight,
+				item,
+				weight,
+				percentage);
+		}
+
 
 		// Reject duplicate values.
 		if (!SerializedPropertyEqual(item, oldValue) && IsDuplicate(pool, item, index))
 			RestoreValue(item, oldValue);
-
-		// --------------------------------------------------
-		// Weight
-		// --------------------------------------------------
-
-		EditorGUI.PropertyField(
-			new Rect(
-				rect.x +
-				itemWidth +
-				ColumnSpacing,
-				itemY,
-				weightWidth,
-				EditorGUIUtility.singleLineHeight),
-			weight,
-			GUIContent.none);
-
-		weight.intValue = Mathf.Max(MinimumWeight, weight.intValue);
-
-		// --------------------------------------------------
-		// Chance
-		// --------------------------------------------------
-
-		Rect chanceRect = new Rect(
-			rect.x +
-			itemWidth +
-			ColumnSpacing +
-			weightWidth +
-			ColumnSpacing,
-			itemY,
-			percentageWidth,
-			EditorGUIUtility.singleLineHeight);
-
-		DrawChanceBar(chanceRect, percentage);
 	}
 
-	private void AddEntry(SerializedProperty pool)
+	private static void AddEntry(SerializedProperty pool)
 	{
-		// Don't allow adding if an existing entry
-		// is invalid.
-		if (HasInvalidEntry(pool))
-			return;
-
 		int index = pool.arraySize;
 
 		pool.InsertArrayElementAtIndex(index);
@@ -348,37 +334,6 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		// Find a unique value for supported value types.
 		AssignUnusedValue(pool, item, index);
-	}
-
-	private static bool HasInvalidEntry(SerializedProperty pool)
-	{
-		for (int i = 0; i < pool.arraySize; i++)
-		{
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
-
-			if (IsInvalid(item))
-				return true;
-		}
-
-		return false;
-	}
-
-	private static bool IsInvalid(SerializedProperty property)
-	{
-		switch (property.propertyType)
-		{
-		case SerializedPropertyType.ObjectReference:
-			return property.objectReferenceValue == null;
-
-		case SerializedPropertyType.ManagedReference:
-			return property.managedReferenceValue == null;
-
-		case SerializedPropertyType.String:
-			return string.IsNullOrWhiteSpace(property.stringValue);
-
-		default:
-			return false;
-		}
 	}
 
 	private static string GetWarning(SerializedProperty pool)
@@ -642,7 +597,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
 
-			if (item.propertyType == SerializedPropertyType.Float && item.doubleValue == value)
+			if (item.propertyType == SerializedPropertyType.Float && Math.Abs(item.doubleValue - value) < Mathf.Epsilon)
 				return true;
 		}
 
@@ -745,16 +700,20 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		return property.displayName;
 	}
-
-	private static GUIContent GetItemLabel(SerializedProperty property)
+	
+	private string GetPoolTypeName()
 	{
-		if (property.propertyType == SerializedPropertyType.Generic ||
-			property.propertyType == SerializedPropertyType.ManagedReference)
-		{
-			return new(GetTypeName(property));
-		}
+		if (fieldInfo == null)
+			return "Unknown";
 
-		return GUIContent.none;
+		Type poolType = fieldInfo.FieldType;
+
+		if (!poolType.IsGenericType)
+			return poolType.Name;
+
+		Type itemType = poolType.GetGenericArguments()[0];
+
+		return itemType.Name;
 	}
 
 	private static bool IsComplexProperty(SerializedProperty property)
@@ -765,6 +724,163 @@ public class WeightedPoolDrawer : PropertyDrawer
 			SerializedPropertyType.ManagedReference => true,
 			_ => false
 		};
+	}
+
+	private static float GetComplexItemHeight(SerializedProperty item)
+	{
+		float height = ComplexHeaderHeight + ElementVerticalPadding;
+
+		if (!item.isExpanded)
+			return height;
+
+		height += ComplexFieldSpacing;
+		
+		SerializedProperty child = item.Copy();
+		SerializedProperty end = child.GetEndProperty();
+
+		bool enterChildren = true;
+
+		while (child.NextVisible(enterChildren) && !SerializedProperty.EqualContents(child, end))
+		{
+			enterChildren = false;
+
+			height += EditorGUI.GetPropertyHeight(child, true);
+
+			height += EditorGUIUtility.standardVerticalSpacing;
+		}
+
+		return height + ElementVerticalPadding;
+	}
+	
+	private static void DrawSimpleItem(
+		Rect rect,
+		float itemY,
+		float itemWidth,
+		float itemHeight,
+		SerializedProperty item,
+		SerializedProperty weight,
+		float percentage)
+	{
+		EditorGUI.PropertyField(
+			new Rect(
+				rect.x,
+				itemY,
+				itemWidth,
+				itemHeight),
+			item,
+			GUIContent.none,
+			true);
+
+		// Weight
+		EditorGUI.PropertyField(
+			new Rect(
+				rect.x +
+				itemWidth +
+				ColumnSpacing,
+				itemY,
+				WeightWidth,
+				EditorGUIUtility.singleLineHeight),
+			weight,
+			GUIContent.none);
+
+		// Chance
+		DrawChanceBar(
+			new Rect(
+				rect.x +
+				itemWidth +
+				ColumnSpacing +
+				WeightWidth +
+				ColumnSpacing,
+				itemY,
+				PercentageWidth,
+				EditorGUIUtility.singleLineHeight),
+			percentage);
+	}
+
+	private static void DrawComplexItem(
+		Rect rect,
+		SerializedProperty item,
+		int index,
+		float itemWidth,
+		SerializedProperty weight,
+		float percentage)
+	{
+		// The handle occupies the leftmost part of the element.
+		float contentX = rect.x + HandleWidth;
+
+		// Complex fields can use the entire width of the element.
+		float contentWidth = rect.width - HandleWidth;
+
+		// --------------------------------------------------
+		// Top row
+		// --------------------------------------------------
+
+		Rect headerRect = new Rect(
+			contentX,
+			rect.y + 1f,
+			itemWidth - HandleWidth,
+			ComplexHeaderHeight);
+		
+		item.isExpanded = EditorGUI.Foldout(
+			headerRect,
+			item.isExpanded,
+			$"Element {index} ({GetTypeName(item)})",
+			true);
+
+		// Weight
+		float weightX = rect.x + itemWidth + ColumnSpacing;
+
+		EditorGUI.PropertyField(
+			new Rect(
+				weightX,
+				rect.y + 1f,
+				WeightWidth,
+				EditorGUIUtility.singleLineHeight),
+			weight,
+			GUIContent.none);
+
+		// Chance
+		float chanceX = weightX + WeightWidth + ColumnSpacing;
+
+		DrawChanceBar(
+			new Rect(
+				chanceX,
+				rect.y + 1f,
+				PercentageWidth,
+				EditorGUIUtility.singleLineHeight),
+			percentage);
+
+		// --------------------------------------------------
+		// Children
+		// --------------------------------------------------
+
+		if (!item.isExpanded)
+			return;
+		
+		float y = rect.y + 1f + ComplexHeaderHeight + ComplexFieldSpacing;
+
+		SerializedProperty child = item.Copy();
+		SerializedProperty end = child.GetEndProperty();
+
+		bool enterChildren = true;
+
+		while (child.NextVisible(enterChildren) && !SerializedProperty.EqualContents(child, end))
+		{
+			enterChildren = false;
+
+			float height = EditorGUI.GetPropertyHeight(child, true);
+
+			EditorGUI.PropertyField(
+				new Rect(
+					contentX,
+					y,
+					contentWidth,
+					height),
+				child,
+				true);
+
+			y += height + EditorGUIUtility.standardVerticalSpacing;
+		}
 	}
 }
 
