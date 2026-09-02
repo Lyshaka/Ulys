@@ -7,7 +7,7 @@ public class StateMachine
 {
 	private State _currentState;
 	
-	public State CurrentState =>  _currentState;
+	public State CurrentState => _currentState;
 	
 	public float StateStartTime { get; private set; }
 	public float StateStartFixedTime { get; private set; }
