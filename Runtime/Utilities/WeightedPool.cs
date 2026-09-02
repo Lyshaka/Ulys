@@ -139,6 +139,38 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		Rebuild();
 		return true;
 	}
+	
+	public void AddRange(IEnumerable<(T item, int weight)> weightedEntries)
+	{
+		if (weightedEntries == null)
+			throw new ArgumentNullException(nameof(weightedEntries));
+
+		if (weightedEntries is ICollection<(T item, int weight)> collection)
+		{
+			pool.Capacity = Mathf.Max(pool.Capacity, pool.Count + collection.Count);
+			_lookup.EnsureCapacity(_lookup.Count + collection.Count);
+		}
+
+		bool needRebuild = false;
+
+		foreach ((T item, int weight) in weightedEntries)
+		{
+			if (item == null)
+				throw new ArgumentNullException(nameof(item), NullItemMessage);
+
+			if (weight <= 0)
+				throw new ArgumentException(InvalidWeightMessage, nameof(weight));
+
+			if (!_lookup.TryAdd(item, pool.Count))
+				continue;
+
+			pool.Add(new(item, weight));
+			needRebuild = true;
+		}
+
+		if (needRebuild)
+			Rebuild();
+	}
 
 	public bool Remove(T item)
 	{
