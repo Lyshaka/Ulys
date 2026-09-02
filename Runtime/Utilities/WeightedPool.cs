@@ -25,7 +25,7 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		_lookup = new(capacity);
 	}
 	
-	public WeightedPool(IEnumerable<(T, int)> weightedEntries)
+	public WeightedPool(IEnumerable<(T item, int weight)> weightedEntries)
 	{
 		pool = new();
 		_lookup = new();
@@ -36,21 +36,33 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	private const string NullItemMessage = "Item must be non-null.";
 	private const string InvalidWeightMessage = "Weight must be greater than 0.";
 	
+	/// <summary> Gets the number of items contained in the pool. </summary>
 	public int Count => pool.Count;
+	
+	/// <summary> Gets the sum of the weights of all items in the pool. </summary>
 	public int TotalWeight { get; private set; }
 
+	/// <summary> Removes all items from the pool and resets its total weight. </summary>
 	public void Clear()
 	{
 		pool.Clear();
 		_lookup.Clear();
-		Rebuild();
+		TotalWeight = 0;
 	}
-
+	
+	/// <summary>Determines whether the specified item is contained in the pool.</summary>
+	/// <param name="item">The item to search for.</param>
+	/// <returns><c>true</c> if the item is contained in the pool; otherwise, <c>false</c>.</returns>
 	public bool Contains(T item)
 	{
 		return item != null && _lookup.ContainsKey(item);
 	}
-
+	
+	/// <summary>Attempts to retrieve the weight associated with the specified item.</summary>
+	/// <param name="item">The item whose weight to retrieve.</param>
+	/// <param name="weight">When this method returns, contains the item's weight if found; otherwise, 0.</param>
+	/// <returns><c>true</c> if the item was found; otherwise, <c>false</c>.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
 	public bool TryGetWeight(T item, out int weight)
 	{
 		weight = 0;
@@ -67,6 +79,12 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return false;
 	}
 
+	/// <summary>Sets the weight of an existing item.</summary>
+	/// <param name="item">The item whose weight to change.</param>
+	/// <param name="weight">The new weight. Must be greater than 0.</param>
+	/// <returns><c>true</c> if the item was found and its weight was updated; otherwise, <c>false</c>.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
+	/// <exception cref="ArgumentException">Thrown if <paramref name="weight"/> is less than or equal to 0.</exception>
 	public bool SetWeight(T item, int weight)
 	{
 		if (item == null)
@@ -87,6 +105,11 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return false;
 	}
 
+	/// <summary>Attempts to retrieve the probability of an item being selected.</summary>
+	/// <param name="item">The item whose probability to retrieve.</param>
+	/// <param name="probability">When this method returns, contains the item's probability as a value between 0 and 1 if found; otherwise, 0.</param>
+	/// <returns><c>true</c> if the item was found; otherwise, <c>false</c>.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
 	public bool TryGetProbability(T item, out float probability)
 	{
 		probability = 0f;
@@ -106,6 +129,12 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return false;
 	}
 
+	/// <summary>Adds an item to the pool with the specified weight.</summary>
+	/// <param name="item">The item to add.</param>
+	/// <param name="weight">The item's weight. Defaults to 1.</param>
+	/// <returns><c>true</c> if the item was added; <c>false</c> if the item was already contained in the pool.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
+	/// <exception cref="ArgumentException">Thrown if <paramref name="weight"/> is less than or equal to 0.</exception>
 	public bool Add(T item, int weight = 1)
 	{
 		if (item == null)
@@ -124,6 +153,12 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return false;
 	}
 	
+	/// <summary>Adds an item to the pool or updates its weight if it already exists.</summary>
+	/// <param name="item">The item to add or update.</param>
+	/// <param name="weight">The item's weight. Defaults to 1.</param>
+	/// <returns><c>true</c> after successfully adding or updating the item.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
+	/// <exception cref="ArgumentException">Thrown if <paramref name="weight"/> is less than or equal to 0.</exception>
 	public bool AddOrUpdate(T item, int weight = 1)
 	{
 		if (item == null)
@@ -148,12 +183,19 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return true;
 	}
 	
+	/// <summary>
+	/// Adds multiple weighted items to the pool.
+	/// Duplicate items are ignored. The pool's internal weight data is rebuilt once after all items have been added.
+	/// </summary>
+	/// <param name="weightedEntries">The items and their corresponding weights to add.</param>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="weightedEntries"/> is <c>null</c> /// or if an entry contains a <c>null</c> item.</exception>
+	/// <exception cref="ArgumentException">Thrown if an entry has a weight less than or equal to 0.</exception>
 	public void AddRange(IEnumerable<(T item, int weight)> weightedEntries)
 	{
 		if (weightedEntries == null)
 			throw new ArgumentNullException(nameof(weightedEntries));
 
-		if (weightedEntries is ICollection<(T item, int weight)> collection)
+		if (weightedEntries is IReadOnlyCollection<(T item, int weight)> collection)
 		{
 			pool.Capacity = Mathf.Max(pool.Capacity, pool.Count + collection.Count);
 			_lookup.EnsureCapacity(_lookup.Count + collection.Count);
@@ -180,6 +222,10 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 			Rebuild();
 	}
 
+	/// <summary>Removes an item from the pool.</summary>
+	/// <param name="item">The item to remove.</param>
+	/// <returns><c>true</c> if the item was removed; otherwise, <c>false</c>.</returns>
+	/// <exception cref="ArgumentNullException">Thrown if <paramref name="item"/> is <c>null</c>.</exception>
 	public bool Remove(T item)
 	{
 		if (item == null)
@@ -206,10 +252,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return false;
 	}
 
-	/// <summary>
-	/// Returns a random weighted item from the pool, using <see cref="UnityEngine.Random"/>.
-	/// </summary>
-	/// <returns>Returns a random weighted item from the pool.</returns>
+	/// <summary>Returns a randomly selected item using the item's weight as its selection probability.</summary>
+	/// <returns>A randomly selected item from the pool.</returns>
 	/// <exception cref="InvalidOperationException">Thrown if the pool is empty.</exception>
 	public T GetRandomItem()
 	{
@@ -221,22 +265,21 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return pool[FindWeightedIndex(random)].item;
 	}
 
-	/// <summary>
-	/// Returns a random weighted item from the pool given a random index between 0 inclusive and TotalWeight exclusive.
-	/// </summary>
-	/// <param name="randomIndex">A random index between 0 inclusive and TotalWeight exclusive.</param>
-	/// <returns>Returns a random item from the weighted pool.</returns>
+	/// <summary>Returns the item corresponding to a position in the pool's weighted range.</summary>
+	/// <param name="weightIndex"> A value between 0 inclusive and <see cref="TotalWeight"/> exclusive.
+	/// Each item occupies a number of positions equal to its weight.</param>
+	/// <returns>The item corresponding to the specified position in the weighted range.</returns>
 	/// <exception cref="InvalidOperationException">Thrown if the pool is empty.</exception>
-	/// <exception cref="ArgumentOutOfRangeException">Thrown if the given index is out of range.</exception>
-	public T GetRandomItem(int randomIndex)
+	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="weightIndex"/> is outside the range from 0 inclusive to <see cref="TotalWeight"/> exclusive.</exception>
+	public T GetRandomItem(int weightIndex)
 	{
 		if (pool.Count == 0)
 			throw new InvalidOperationException("Cannot get random item from an empty pool.");
 
-		if (randomIndex < 0 || randomIndex >= TotalWeight)
-			throw new ArgumentOutOfRangeException(nameof(randomIndex), randomIndex, "Random index is out of range.");
+		if (weightIndex < 0 || weightIndex >= TotalWeight)
+			throw new ArgumentOutOfRangeException(nameof(weightIndex), weightIndex, "Weight index is out of range.");
 		
-		return pool[FindWeightedIndex(randomIndex)].item;
+		return pool[FindWeightedIndex(weightIndex)].item;
 	}
 
 	private int FindWeightedIndex(int value)
@@ -257,6 +300,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		return low;
 	}
 	
+	/// <summary>Returns an enumerator that iterates through the items in the pool.</summary>
+	/// <returns>An enumerator that can be used to iterate through the items in the pool.</returns>
 	public IEnumerator<T> GetEnumerator()
 	{
 		foreach (WeightedEntry entry in pool)
@@ -274,10 +319,14 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 			_cumulativeWeights = new int[pool.Count];
 		
 		TotalWeight = 0;
-		_cumulativeWeights = new int[pool.Count];
 		for (int i = 0; i < pool.Count; i++)
 		{
-			TotalWeight += pool[i].weight;
+			int weight = pool[i].weight;
+			
+			if (TotalWeight > int.MaxValue - weight)
+				throw new OverflowException("The total weight exceeds Int32.MaxValue.");
+			
+			TotalWeight += weight;
 			_cumulativeWeights[i] = TotalWeight;
 		}
 	}
@@ -312,7 +361,7 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	}
 	
 	[Serializable]
-	public struct WeightedEntry
+	private struct WeightedEntry
 	{
 		public T item;
 		public int weight;
