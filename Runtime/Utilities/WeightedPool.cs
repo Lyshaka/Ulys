@@ -12,6 +12,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	[SerializeField] private List<WeightedEntry> pool;
 	[NonSerialized] private Dictionary<T, int> _lookup;
 	[NonSerialized] private int[] _cumulativeWeights;
+	
+	private bool _lookupDirty;
 
 	public WeightedPool()
 	{
@@ -46,6 +48,7 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	public void Clear()
 	{
 		pool.Clear();
+		EnsureLookup();
 		_lookup.Clear();
 		TotalWeight = 0;
 	}
@@ -55,6 +58,7 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	/// <returns><c>true</c> if the item is contained in the pool; otherwise, <c>false</c>.</returns>
 	public bool Contains(T item)
 	{
+		EnsureLookup();
 		return item != null && _lookup.ContainsKey(item);
 	}
 	
@@ -69,6 +73,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		
 		if (item == null)
 			throw new ArgumentNullException(nameof(item), NullItemMessage);
+
+		EnsureLookup();
 		
 		if (_lookup.TryGetValue(item, out int index))
 		{
@@ -92,6 +98,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		
 		if (weight <= 0)
 			throw new ArgumentException(InvalidWeightMessage, nameof(weight));
+
+		EnsureLookup();
 		
 		if (_lookup.TryGetValue(item, out int index))
 		{
@@ -119,6 +127,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		
 		if (TotalWeight == 0)
 			return false;
+
+		EnsureLookup();
 		
 		if (_lookup.TryGetValue(item, out int index))
 		{
@@ -143,6 +153,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		if (weight <= 0)
 			throw new ArgumentException(InvalidWeightMessage, nameof(weight));
 
+		EnsureLookup();
+
 		if (_lookup.TryAdd(item, pool.Count))
 		{
 			pool.Add(new(item, weight));
@@ -166,6 +178,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		
 		if (weight <= 0)
 			throw new ArgumentException(InvalidWeightMessage, nameof(weight));
+
+		EnsureLookup();
 
 		if (_lookup.TryGetValue(item, out int index))
 		{
@@ -194,6 +208,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	{
 		if (weightedEntries == null)
 			throw new ArgumentNullException(nameof(weightedEntries));
+
+		EnsureLookup();
 
 		if (weightedEntries is IReadOnlyCollection<(T item, int weight)> collection)
 		{
@@ -230,6 +246,8 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 	{
 		if (item == null)
 			throw new ArgumentNullException(nameof(item), NullItemMessage);
+
+		EnsureLookup();
 		
 		if (_lookup.TryGetValue(item, out int index))
 		{
@@ -346,18 +364,26 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 			_lookup.TryAdd(item, i);
 		}
 	}
-	
-	public void OnBeforeSerialize()
+
+	private void EnsureLookup()
 	{
-		//Debug.Log("OnBeforeSerialize !");
+		if (!_lookupDirty)
+			return;
+
+		RebuildLookup();
+		_lookupDirty = false;
 	}
+	
+	public void OnBeforeSerialize() { }
 
 	public void OnAfterDeserialize()
 	{
-		//Debug.Log("OnAfterDeserialize !");
 		pool ??= new();
+		
 		Rebuild();
-		RebuildLookup();
+		
+		_lookup?.Clear();
+		_lookupDirty = true;
 	}
 	
 	[Serializable]
