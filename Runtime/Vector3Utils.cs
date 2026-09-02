@@ -101,6 +101,12 @@ public static class Vector3Utils
 	}
 	
 	#endregion
+
+
+	public static bool IsInRange(Vector3 origin, Vector3 target, float range)
+	{
+		return (target - origin).sqrMagnitude <= range * range;
+	}
 		
 	#region RANDOM
 
