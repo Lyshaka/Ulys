@@ -25,6 +25,10 @@ public class WeightedPoolDrawer : PropertyDrawer
 	private const float ComplexHeaderHeight = 18f;
 	private const float ComplexFieldSpacing = 2f;
 
+	private const string PoolName = "pool";
+	private const string ItemName = "item";
+	private const string WeightName = "weight";
+
 	private ReorderableList _list;
 
 	private static readonly GUIStyle ChanceLabelStyle = new(EditorStyles.label)
@@ -35,7 +39,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 	public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 	{
-		SerializedProperty pool = property.FindPropertyRelative("pool");
+		SerializedProperty pool = property.FindPropertyRelative(PoolName);
 
 		EditorGUI.BeginProperty(position, label, property);
 
@@ -113,7 +117,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 		if (!property.isExpanded)
 			return EditorGUIUtility.singleLineHeight;
 
-		SerializedProperty pool = property.FindPropertyRelative("pool");
+		SerializedProperty pool = property.FindPropertyRelative(PoolName);
 
 		ReorderableList list = GetList(pool);
 
@@ -202,7 +206,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			{
 				SerializedProperty entry = pool.GetArrayElementAtIndex(index);
 
-				SerializedProperty item = entry.FindPropertyRelative("item");
+				SerializedProperty item = entry.FindPropertyRelative(ItemName);
 
 				if (IsComplexProperty(item))
 					return GetComplexItemHeight(item);
@@ -263,9 +267,9 @@ public class WeightedPoolDrawer : PropertyDrawer
 	{
 		SerializedProperty entry = pool.GetArrayElementAtIndex(index);
 
-		SerializedProperty item = entry.FindPropertyRelative("item");
+		SerializedProperty item = entry.FindPropertyRelative(ItemName);
 
-		SerializedProperty weight = entry.FindPropertyRelative("weight");
+		SerializedProperty weight = entry.FindPropertyRelative(WeightName);
 
 		object oldValue = GetValue(item);
 
@@ -322,9 +326,9 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		SerializedProperty entry = pool.GetArrayElementAtIndex(index);
 
-		SerializedProperty item = entry.FindPropertyRelative("item");
+		SerializedProperty item = entry.FindPropertyRelative(ItemName);
 
-		SerializedProperty weight = entry.FindPropertyRelative("weight");
+		SerializedProperty weight = entry.FindPropertyRelative(WeightName);
 
 		weight.intValue = DefaultWeight;
 
@@ -340,7 +344,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 	{
 		for (int i = 0; i < pool.arraySize; i++)
 		{
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (item.propertyType == SerializedPropertyType.ObjectReference && item.objectReferenceValue == null)
 				return "Every entry must have a value. Null entries cannot be used by the weighted pool.";
@@ -355,7 +359,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 		// Duplicate check.
 		for (int i = 0; i < pool.arraySize; i++)
 		{
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (IsDuplicate(pool, item, i))
 				return "The pool contains duplicate entries. Every item must be unique.";
@@ -465,7 +469,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			if (i == ignoredIndex)
 				continue;
 
-			SerializedProperty other = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty other = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (SerializedProperty.DataEquals(item, other))
 				return true;
@@ -480,7 +484,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		for (int i = 0; i < pool.arraySize; i++)
 		{
-			SerializedProperty weight = pool.GetArrayElementAtIndex(i).FindPropertyRelative("weight");
+			SerializedProperty weight = pool.GetArrayElementAtIndex(i).FindPropertyRelative(WeightName);
 
 			total += Mathf.Max(MinimumWeight, weight.intValue);
 		}
@@ -492,7 +496,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 	{
 		for (int i = 0; i < pool.arraySize; i++)
 		{
-			SerializedProperty weight = pool.GetArrayElementAtIndex(i).FindPropertyRelative("weight");
+			SerializedProperty weight = pool.GetArrayElementAtIndex(i).FindPropertyRelative(WeightName);
 
 			weight.intValue = Mathf.Max(MinimumWeight, weight.intValue);
 		}
@@ -570,6 +574,8 @@ public class WeightedPoolDrawer : PropertyDrawer
 			property.colorValue = (Color)value;
 			break;
 		}
+		
+		property.serializedObject.ApplyModifiedProperties();
 	}
 
 	private static bool ContainsInteger(SerializedProperty pool, long value, int ignoredIndex)
@@ -579,7 +585,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			if (i == ignoredIndex)
 				continue;
 
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (item.propertyType == SerializedPropertyType.Integer && item.longValue == value)
 				return true;
@@ -595,7 +601,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			if (i == ignoredIndex)
 				continue;
 
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (item.propertyType == SerializedPropertyType.Float && Math.Abs(item.doubleValue - value) < Mathf.Epsilon)
 				return true;
@@ -611,7 +617,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 			if (i == ignoredIndex)
 				continue;
 
-			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative("item");
+			SerializedProperty item = pool.GetArrayElementAtIndex(i).FindPropertyRelative(ItemName);
 
 			if (item.propertyType == SerializedPropertyType.Enum && item.enumValueIndex == value)
 				return true;
