@@ -218,6 +218,9 @@ public class WeightedPoolDrawer : PropertyDrawer
 			
 			onRemoveCallback = list =>
 			{
+				if (list.index < 0)
+					list.index = pool.arraySize - 1;
+
 				if (list.index < 0 || list.index >= pool.arraySize)
 					return;
 
@@ -226,7 +229,7 @@ public class WeightedPoolDrawer : PropertyDrawer
 				list.index = Mathf.Clamp(list.index, 0, pool.arraySize - 1);
 			}
 		};
-
+		
 		return _list;
 	}
 
@@ -338,6 +341,8 @@ public class WeightedPoolDrawer : PropertyDrawer
 
 		// Find a unique value for supported value types.
 		AssignUnusedValue(pool, item, index);
+		
+		pool.serializedObject.ApplyModifiedProperties();
 	}
 
 	private static string GetWarning(SerializedProperty pool)
