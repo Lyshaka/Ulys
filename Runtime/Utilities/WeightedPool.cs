@@ -25,6 +25,14 @@ public class WeightedPool<T> : IEnumerable<T>, ISerializationCallbackReceiver
 		_lookup = new(capacity);
 	}
 	
+	public WeightedPool(IEnumerable<(T, int)> weightedEntries)
+	{
+		pool = new();
+		_lookup = new();
+
+		AddRange(weightedEntries);
+	}
+	
 	private const string NullItemMessage = "Item must be non-null.";
 	private const string InvalidWeightMessage = "Weight must be greater than 0.";
 	
