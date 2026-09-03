@@ -58,6 +58,10 @@ public class CoreManager : MonoBehaviour
 		OnUpdateCallback = null;
 		OnFixedUpdateCallback = null;
 		OnLateUpdateCallback = null;
+		OnDestroyCallback = null;
+		OnApplicationQuitCallback = null;
+		OnApplicationFocusCallback = null;
+		OnApplicationPauseCallback = null;
 		
 		TimedCallbacks.Clear();
 		ActiveCallbackIDs.Clear();
@@ -79,30 +83,48 @@ public class CoreManager : MonoBehaviour
 
 	private static void UpdateTimedCallbacks()
 	{
-		// Timed Callbacks In
 		for (int i = TimedCallbacks.Count - 1; i >= 0; i--)
 		{
 			TimedCallback current = TimedCallbacks[i];
-			
-			if (Time.time < current.Time)
+
+			if (Time.time < current.CallbackTime)
 				continue;
 			
 			SwapAndRemoveAt(i);
 			
-			if (!ActiveCallbackIDs.Contains(current.ID))
-				continue;
-
-			float delay = Time.time - current.Time;
-			
-			current.Callback(delay);
-
-			if (current.Interval <= 0f)
+			switch (current.Type)
 			{
-				ActiveCallbackIDs.Remove(current.ID);
-				continue;
-			}
+			case TimedCallback.TimedCallbackType.Once:
+				if (ActiveCallbackIDs.Remove(current.ID))
+					current.Callback(Time.time - current.CallbackTime);
+				break;
+				
+			case TimedCallback.TimedCallbackType.Interval:
+				if (ActiveCallbackIDs.Contains(current.ID))
+				{
+					current.Callback(Time.time - current.CallbackTime);
+					current.CallbackTime += current.Interval;
+					TimedCallbacks.Add(current);
+				}
+				break;
 			
-			ScheduleCallback(current.GetNext());
+			case TimedCallback.TimedCallbackType.EveryFrame:
+				if (Time.time <= current.EndTime && ActiveCallbackIDs.Contains(current.ID))
+				{
+					current.Callback(Time.time - current.StartTime);
+					current.CallbackTime = Time.time;
+					TimedCallbacks.Add(current);
+				}
+				else
+				{
+					current.Callback(current.EndTime - current.StartTime);
+					ActiveCallbackIDs.Remove(current.ID);
+				}
+				break;
+				
+			default:
+				throw new ArgumentOutOfRangeException();
+			}
 		}
 	}
 	
@@ -124,7 +146,13 @@ public class CoreManager : MonoBehaviour
 		if (time < 0f)
 			throw new ArgumentOutOfRangeException(nameof(time), "Time must be equal to or greater than 0.");
 
-		TimedCallback timedCallback = new(callback, Time.time + time);
+		TimedCallback timedCallback = new(
+			++_callbackID,
+			callback,
+			TimedCallback.TimedCallbackType.Once,
+			Time.time,
+			Time.time + time,
+			0f);
 
 		ScheduleCallback(in timedCallback);
 		
@@ -147,20 +175,23 @@ public class CoreManager : MonoBehaviour
 		if (interval <= 0f)
 			throw new ArgumentOutOfRangeException(nameof(interval), "Interval must be greater than 0.");
 		
-		TimedCallback timedCallback = new(callback, Time.time, interval);
+		TimedCallback timedCallback = new(
+			++_callbackID,
+			callback,
+			TimedCallback.TimedCallbackType.Interval,
+			Time.time,
+			0f,
+			interval);
 		
 		ScheduleCallback(in timedCallback);
 		
 		return new(timedCallback.ID);
 	}
 	
-	/// <summary>Invokes a callback after the specified amount of time has elapsed.
-	/// If <paramref name="time"/> is 0, the callback is invoked on the next Update.</summary>
-	/// <param name="time">The time in seconds to wait before invoking the callback.
-	/// Must be greater than or equal to 0.
-	/// A value of 0 schedules the callback for the next Update.</param>
+	/// <summary>Invokes a callback every frame until the specified amount of time has elapsed.</summary>
+	/// <param name="time">The time in seconds until the callback stops invoking. Must be greater than 0.</param>
 	/// <param name="callback">The callback to invoke.
-	/// It receives the delay in seconds between the scheduled execution time and the actual execution time.</param>
+	/// It receives the elapsed time in seconds since the callback was scheduled.</param>
 	/// <returns>A handle that can be used to cancel the scheduled callback.</returns>
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="callback"/> is <c>null</c>.</exception>
 	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="time"/> is less than 0.</exception>
@@ -169,10 +200,16 @@ public class CoreManager : MonoBehaviour
 		if (callback == null)
 			throw new ArgumentNullException(nameof(callback), "Callback cannot be null.");
 
-		if (time < 0f)
-			throw new ArgumentOutOfRangeException(nameof(time), "Time must be equal to or greater than 0.");
+		if (time <= 0f)
+			throw new ArgumentOutOfRangeException(nameof(time), "Time must be greater than 0.");
 
-		TimedCallback timedCallback = new(callback, Time.time + time, 0f);
+		TimedCallback timedCallback = new(
+			++_callbackID,
+			callback,
+			TimedCallback.TimedCallbackType.EveryFrame,
+			Time.time,
+			Time.time + time,
+			0f);
 
 		ScheduleCallback(in timedCallback);
 		
@@ -185,42 +222,41 @@ public class CoreManager : MonoBehaviour
 		ActiveCallbackIDs.Add(timedCallback.ID);
 	}
 
-	private readonly struct TimedCallback
+	private struct TimedCallback
 	{
 		public readonly long ID;
 		
 		public readonly Action<float> Callback;
+		public readonly TimedCallbackType Type;
 		
-		public readonly float Time;
+		public readonly float StartTime;
+		public readonly float EndTime;
 		public readonly float Interval;
 
-		public TimedCallback(Action<float> callback, float time)
-		{
-			ID = ++_callbackID;
-			Callback = callback;
-			Time = time;
-			Interval = 0f;
-		}
-		
-		public TimedCallback(Action<float> callback, float time, float interval)
-		{
-			ID = ++_callbackID;
-			Callback = callback;
-			Time = time;
-			Interval = interval;
-		}
-		
-		private TimedCallback(long id, Action<float> callback, float time, float interval)
+		public float CallbackTime;
+
+		public TimedCallback(long id, Action<float> callback, TimedCallbackType type, float startTime, float endTime, float interval)
 		{
 			ID = id;
 			Callback = callback;
-			Time = time;
+			Type = type;
+			StartTime = startTime;
+			EndTime = endTime;
 			Interval = interval;
-		}
 
-		public TimedCallback GetNext()
+			CallbackTime = type switch
+			{
+				TimedCallbackType.Once => endTime,
+				TimedCallbackType.Interval => startTime + interval,
+				TimedCallbackType.EveryFrame => startTime + interval,
+				_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+			};
+		}
+		public enum TimedCallbackType
 		{
-			return new(ID, Callback, Time + Interval, Interval);
+			Once,
+			Interval,
+			EveryFrame,
 		}
 	}
 
