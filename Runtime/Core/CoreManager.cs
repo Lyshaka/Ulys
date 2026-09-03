@@ -83,6 +83,7 @@ public class CoreManager : MonoBehaviour
 		list.RemoveAt(lastIndex);
 	}
 
+	// ReSharper disable Unity.PerformanceAnalysis
 	private static void UpdateTimedCallbacks()
 	{
 		for (int i = TimedCallbacks.Count - 1; i >= 0; i--)
@@ -96,12 +97,12 @@ public class CoreManager : MonoBehaviour
 			
 			switch (current.Type)
 			{
-			case TimedCallback.TimedCallbackType.Once:
+			case TimedCallbackType.Once:
 				if (ActiveCallbackIDs.Remove(current.ID))
 					current.Callback(Time.time - current.CallbackTime);
 				break;
 				
-			case TimedCallback.TimedCallbackType.Interval:
+			case TimedCallbackType.Interval:
 				if (ActiveCallbackIDs.Contains(current.ID))
 				{
 					current.Callback(Time.time - current.CallbackTime);
@@ -110,18 +111,21 @@ public class CoreManager : MonoBehaviour
 				}
 				break;
 			
-			case TimedCallback.TimedCallbackType.EveryFrame:
-				if (Time.time < current.EndTime && ActiveCallbackIDs.Contains(current.ID))
-				{
-					current.Callback(Time.time - current.StartTime);
-					current.CallbackTime = Time.time;
-					TimedCallbacks.Add(current);
-				}
-				else
+			case TimedCallbackType.EveryFrame:
+				if (!ActiveCallbackIDs.Contains(current.ID))
+					break;
+
+				if (Time.time >= current.EndTime)
 				{
 					current.Callback(current.EndTime - current.StartTime);
 					ActiveCallbackIDs.Remove(current.ID);
+					break;
 				}
+
+				current.Callback(Time.time - current.StartTime);
+				current.CallbackTime = Time.time;
+				TimedCallbacks.Add(current);
+
 				break;
 				
 			default:
@@ -151,7 +155,7 @@ public class CoreManager : MonoBehaviour
 		TimedCallback timedCallback = new(
 			++_callbackID,
 			callback,
-			TimedCallback.TimedCallbackType.Once,
+			TimedCallbackType.Once,
 			Time.time,
 			Time.time + time,
 			0f);
@@ -180,7 +184,7 @@ public class CoreManager : MonoBehaviour
 		TimedCallback timedCallback = new(
 			++_callbackID,
 			callback,
-			TimedCallback.TimedCallbackType.Interval,
+			TimedCallbackType.Interval,
 			Time.time,
 			0f,
 			interval);
@@ -194,10 +198,10 @@ public class CoreManager : MonoBehaviour
 	/// <param name="time">The time in seconds until the callback stops invoking. Must be greater than 0.</param>
 	/// <param name="callback">The callback to invoke.
 	/// It receives the elapsed time in seconds since the callback was scheduled.
-	/// It will be invoked one last time with the exact scheduled time.</param>
+	/// It will be invoked one last time with the exact specified duration.</param>
 	/// <returns>A handle that can be used to cancel the scheduled callback.</returns>
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="callback"/> is <c>null</c>.</exception>
-	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="time"/> is less than 0.</exception>
+	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="time"/> is less than or equal to 0.</exception>
 	public static CallbackHandle GetCallbackFor(float time, Action<float> callback)
 	{
 		if (callback == null)
@@ -209,7 +213,7 @@ public class CoreManager : MonoBehaviour
 		TimedCallback timedCallback = new(
 			++_callbackID,
 			callback,
-			TimedCallback.TimedCallbackType.EveryFrame,
+			TimedCallbackType.EveryFrame,
 			Time.time,
 			Time.time + time,
 			0f);
@@ -251,16 +255,17 @@ public class CoreManager : MonoBehaviour
 			{
 				TimedCallbackType.Once => endTime,
 				TimedCallbackType.Interval => startTime + interval,
-				TimedCallbackType.EveryFrame => startTime + interval,
+				TimedCallbackType.EveryFrame => startTime,
 				_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
 			};
 		}
-		public enum TimedCallbackType
-		{
-			Once,
-			Interval,
-			EveryFrame,
-		}
+	}
+	
+	private enum TimedCallbackType
+	{
+		Once,
+		Interval,
+		EveryFrame,
 	}
 
 	public readonly struct CallbackHandle
