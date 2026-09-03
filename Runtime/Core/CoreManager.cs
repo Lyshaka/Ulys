@@ -69,6 +69,8 @@ public class CoreManager : MonoBehaviour
 
 	#region TIMED_CALLBACKS
 	
+	public static int TimedCallbackCount => ActiveCallbackIDs.Count;
+	
 	private static long _callbackID;
 	private static readonly List<TimedCallback> TimedCallbacks = new();
 	private static readonly HashSet<long> ActiveCallbackIDs = new();
