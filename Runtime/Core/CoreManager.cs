@@ -109,7 +109,7 @@ public class CoreManager : MonoBehaviour
 				break;
 			
 			case TimedCallback.TimedCallbackType.EveryFrame:
-				if (Time.time <= current.EndTime && ActiveCallbackIDs.Contains(current.ID))
+				if (Time.time < current.EndTime && ActiveCallbackIDs.Contains(current.ID))
 				{
 					current.Callback(Time.time - current.StartTime);
 					current.CallbackTime = Time.time;
@@ -191,7 +191,8 @@ public class CoreManager : MonoBehaviour
 	/// <summary>Invokes a callback every frame until the specified amount of time has elapsed.</summary>
 	/// <param name="time">The time in seconds until the callback stops invoking. Must be greater than 0.</param>
 	/// <param name="callback">The callback to invoke.
-	/// It receives the elapsed time in seconds since the callback was scheduled.</param>
+	/// It receives the elapsed time in seconds since the callback was scheduled.
+	/// It will be invoked one last time with the exact scheduled time.</param>
 	/// <returns>A handle that can be used to cancel the scheduled callback.</returns>
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="callback"/> is <c>null</c>.</exception>
 	/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="time"/> is less than 0.</exception>
